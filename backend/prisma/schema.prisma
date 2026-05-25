@@ -1,0 +1,160 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum PropertyStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  BANNED
+}
+
+enum PropertyType {
+  RENT
+  SALE
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String?
+  name      String
+  avatar    String?
+  role      UserRole @default(USER)
+  isBanned  Boolean  @default(false)
+  googleId  String?  @unique
+  fcmToken  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  properties        Property[]
+  favorites         Favorite[]
+  messagesSent      Message[]  @relation("SentMessages")
+  messagesReceived  Message[]  @relation("ReceivedMessages")
+  visitsAsRequester Visit[]    @relation("RequesterVisits")
+  visitsAsOwner     Visit[]    @relation("OwnerVisits")
+
+  // Fixed reports relations - two separate lists
+  reportsMade     Report[] @relation("ReportReporter")
+  reportsReceived Report[] @relation("ReportReportedUser")
+
+  notifications Notification[]
+}
+
+model Property {
+  id          String         @id @default(uuid())
+  title       String
+  description String
+  price       Float
+  type        PropertyType // RENT / SALE
+  category    String // e.g., Apartment, Villa, Commercial
+  bedrooms    Int?
+  bathrooms   Int?
+  area        Float
+  address     String
+  city        String
+  state       String
+  country     String
+  latitude    Float?
+  longitude   Float?
+  status      PropertyStatus @default(PENDING)
+  views       Int            @default(0)
+  ownerId     String
+  owner       User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  images    PropertyImage[]
+  favorites Favorite[]
+  visits    Visit[]
+  reports   Report[]
+  messages  Message[]
+}
+
+model PropertyImage {
+  id         String   @id @default(uuid())
+  url        String
+  publicId   String
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+}
+
+model Favorite {
+  id         String   @id @default(uuid())
+  userId     String
+  propertyId String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, propertyId])
+}
+
+model Message {
+  id         String   @id @default(uuid())
+  content    String
+  senderId   String
+  receiverId String
+  propertyId String // chat about a specific property
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  sender   User     @relation("SentMessages", fields: [senderId], references: [id])
+  receiver User     @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  property Property @relation(fields: [propertyId], references: [id])
+}
+
+model Visit {
+  id          String   @id @default(uuid())
+  propertyId  String
+  requesterId String
+  ownerId     String
+  date        DateTime
+  status      String // PENDING, APPROVED, REJECTED, CANCELLED
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  property  Property @relation(fields: [propertyId], references: [id])
+  requester User     @relation("RequesterVisits", fields: [requesterId], references: [id])
+  owner     User     @relation("OwnerVisits", fields: [ownerId], references: [id])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  body      String
+  data      Json? // extra data like "type": "message", "visitId"
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Report {
+  id             String   @id @default(uuid())
+  reporterId     String
+  propertyId     String?
+  reportedUserId String?
+  reason         String
+  status         String   @default("PENDING")
+  createdAt      DateTime @default(now())
+
+  // Explicit relation names to disambiguate
+  reporter     User      @relation("ReportReporter", fields: [reporterId], references: [id])
+  property     Property? @relation(fields: [propertyId], references: [id])
+  reportedUser User?     @relation("ReportReportedUser", fields: [reportedUserId], references: [id])
+}
