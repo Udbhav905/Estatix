@@ -5,12 +5,14 @@ import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
 import authRoutes from './routes/authRoutes';
+import userRoutes from './routes/userRoutes';
 import propertyRoutes from './routes/propertyRoutes';
 import chatRoutes from './routes/chatRoutes';
 import visitRoutes from './routes/visitRoutes';
 import notificationRoutes from './routes/notificationRoutes';
 import adminRoutes from './routes/adminRoutes';
 import aiRoutes from './routes/aiRoutes';
+import favoriteRoutes from './routes/favoriteRoutes';
 import { errorHandler } from './middleware/errorHandler';
 
 const app = express();
@@ -32,12 +34,14 @@ app.use('/api', limiter);
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
 app.use('/api/properties', propertyRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/visits', visitRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/favorites', favoriteRoutes);
 
 // Health check
 app.get('/health', (req, res) => res.send('OK'));

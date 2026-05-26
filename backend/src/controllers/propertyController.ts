@@ -2,29 +2,105 @@ import { Request, Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import { prisma } from '../utils/prisma';
 import cloudinary from '../config/cloudinary';
+import { uploadImage } from '../middleware/upload';
 
 export const createProperty = async (req: AuthRequest, res: Response) => {
-  const { title, description, price, type, category, bedrooms, bathrooms, area, address, city, state, country, latitude, longitude } = req.body;
-  const images = req.files as Express.Multer.File[];
+  let createdPropertyId: string | null = null;
+  try {
+    const { 
+      title, 
+      description, 
+      price, 
+      type, 
+      category, 
+      bedrooms, 
+      bathrooms, 
+      area, 
+      address, 
+      city, 
+      state, 
+      country, 
+      latitude, 
+      longitude 
+    } = req.body;
+    
+    const images = req.files as Express.Multer.File[];
 
-  const property = await prisma.property.create({
-    data: {
-      title, description, price: parseFloat(price), type, category, bedrooms: parseInt(bedrooms), bathrooms: parseInt(bathrooms), area: parseFloat(area),
-      address, city, state, country, latitude: latitude ? parseFloat(latitude) : null, longitude: longitude ? parseFloat(longitude) : null,
-      ownerId: req.user!.id,
-    },
-  });
+    // Basic validation
+    if (!title || !price || !address) {
+      return res.status(400).json({ error: 'Title, price, and address are required' });
+    }
 
-  if (images?.length) {
-    const imageUploads = images.map(async (file) => {
-      const result = await cloudinary.uploader.upload(file.path, { folder: 'properties' });
-      return prisma.propertyImage.create({
-        data: { url: result.secure_url, publicId: result.public_id, propertyId: property.id },
-      });
+    // Prepare numbers/floats/ints and handle undefined/NaN gracefully
+    const parsedPrice = parseFloat(price);
+    const parsedArea = parseFloat(area || '0');
+    const parsedBedrooms = bedrooms ? parseInt(bedrooms) : null;
+    const parsedBathrooms = bathrooms ? parseInt(bathrooms) : null;
+    const parsedLatitude = latitude ? parseFloat(latitude) : null;
+    const parsedLongitude = longitude ? parseFloat(longitude) : null;
+
+    if (isNaN(parsedPrice)) {
+      return res.status(400).json({ error: 'Invalid price format' });
+    }
+    if (isNaN(parsedArea)) {
+      return res.status(400).json({ error: 'Invalid area format' });
+    }
+
+    const property = await prisma.property.create({
+      data: {
+        title,
+        description: description || '',
+        price: parsedPrice,
+        type: type || 'SALE',
+        category: category || 'Apartment',
+        bedrooms: isNaN(parsedBedrooms as number) ? null : parsedBedrooms,
+        bathrooms: isNaN(parsedBathrooms as number) ? null : parsedBathrooms,
+        area: parsedArea,
+        address,
+        city: city || '',
+        state: state || '',
+        country: country || '',
+        latitude: isNaN(parsedLatitude as number) ? null : parsedLatitude,
+        longitude: isNaN(parsedLongitude as number) ? null : parsedLongitude,
+        ownerId: req.user!.id,
+      },
     });
-    await Promise.all(imageUploads);
+    createdPropertyId = property.id;
+
+    if (images?.length) {
+      const imageUploads = images.map(async (file) => {
+        const result = (await uploadImage(file)) as any;
+        return prisma.propertyImage.create({
+          data: { 
+            url: result.secure_url, 
+            publicId: result.public_id, 
+            propertyId: property.id 
+          },
+        });
+      });
+      await Promise.all(imageUploads);
+    }
+
+    // Fetch complete property with images
+    const createdProperty = await prisma.property.findUnique({
+      where: { id: property.id },
+      include: { images: true }
+    });
+
+    res.status(201).json(createdProperty);
+  } catch (error: any) {
+    console.error('Create property error:', error);
+    // Cleanup orphan property if image uploads or other steps failed
+    if (createdPropertyId) {
+      try {
+        await prisma.property.delete({ where: { id: createdPropertyId } });
+        console.log('🧹 Cleaned up orphan property after creation process error:', createdPropertyId);
+      } catch (cleanupError) {
+        console.error('Failed to clean up orphan property:', cleanupError);
+      }
+    }
+    res.status(500).json({ error: error.message || 'Failed to create property' });
   }
-  res.status(201).json(property);
 };
 
 export const getProperties = async (req: Request, res: Response) => {
@@ -45,17 +121,17 @@ export const getProperties = async (req: Request, res: Response) => {
 };
 
 export const getPropertyById = async (req: Request, res: Response) => {
-  const property = await prisma.property.findUnique({ where: { id: req.params.id  as string}, include: { images: true, owner: true } });
+  const property = await prisma.property.findUnique({ where: { id: req.params.id as string }, include: { images: true, owner: true } });
   if (!property) return res.status(404).json({ error: 'Property not found' });
   await prisma.property.update({ where: { id: req.params.id as string }, data: { views: { increment: 1 } } });
   res.json(property);
 };
 
 export const updateProperty = async (req: AuthRequest, res: Response) => {
-  const property = await prisma.property.findUnique({ where: { id: req.params.id  as string} });
+  const property = await prisma.property.findUnique({ where: { id: req.params.id as string } });
   if (!property) return res.status(404).json({ error: 'Property not found' });
   if (property.ownerId !== req.user!.id && req.user!.role !== 'ADMIN') return res.status(403).json({ error: 'Unauthorized' });
-  const updated = await prisma.property.update({ where: { id: req.params.id  as string}, data: req.body });
+  const updated = await prisma.property.update({ where: { id: req.params.id as string }, data: req.body });
   res.json(updated);
 };
 

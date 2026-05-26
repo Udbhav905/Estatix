@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { AuthRequest } from '../middleware/auth';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../utils/prisma';
@@ -59,4 +60,17 @@ export const forgotPassword = async (req: Request, res: Response) => {
     html: `<a href="${resetLink}">Reset your password</a>`,
   });
   res.json({ message: 'Reset email sent' });
+};
+
+export const getMe = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.id },
+      select: { id: true, name: true, email: true, role: true, avatar: true },
+    });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json({ user });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
 };
