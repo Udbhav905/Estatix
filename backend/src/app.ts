@@ -13,6 +13,7 @@ import notificationRoutes from './routes/notificationRoutes';
 import adminRoutes from './routes/adminRoutes';
 import aiRoutes from './routes/aiRoutes';
 import favoriteRoutes from './routes/favoriteRoutes';
+import reportRoutes from './routes/reportRoutes';
 import { errorHandler } from './middleware/errorHandler';
 
 const app = express();
@@ -42,6 +43,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/favorites', favoriteRoutes);
+app.use('/api/reports', reportRoutes);
 
 // Health check
 app.get('/health', (req, res) => res.send('OK'));

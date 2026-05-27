@@ -26,17 +26,48 @@ export const getFilteredProperties = async (filters: { search?: string; minPrice
   const skip = (page - 1) * limit;
   const where: any = { status: PropertyStatus.APPROVED };
 
-  // Enhanced search: try to parse as number for price, else search text fields
   if (search && search.trim() !== "") {
     const trimmedSearch = search.trim();
-    const isNumeric = /^\d+$/.test(trimmedSearch);
+    
+    // AI-like smart search: extract keywords and numbers, ignoring common stop words
+    const stopWords = ['i', 'want', 'a', 'an', 'the', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'and', 'or', 'is', 'are', 'my', 'find', 'looking', 'show', 'me', 'some', 'any', 'like', 'house', 'property', 'under', 'around', 'near', 'about', 'just'];
+    const words = trimmedSearch.toLowerCase().replace(/[^a-z0-9\s]/gi, '').split(/\s+/).filter(w => w.length > 0);
+    const keywords = words.filter(word => !stopWords.includes(word));
+    const numbers = words.map(w => parseInt(w, 10)).filter(n => !isNaN(n));
+    
+    const orConditions: any[] = [];
+    
+    if (keywords.length > 0) {
+      keywords.forEach(word => {
+        if (isNaN(Number(word))) {
+          orConditions.push({ title: { contains: word, mode: "insensitive" } });
+          orConditions.push({ description: { contains: word, mode: "insensitive" } });
+          orConditions.push({ city: { contains: word, mode: "insensitive" } });
+          orConditions.push({ category: { contains: word, mode: "insensitive" } });
+          orConditions.push({ address: { contains: word, mode: "insensitive" } });
+        }
+      });
+    }
+    
+    if (numbers.length > 0) {
+      numbers.forEach(num => {
+        // Provide a 20% margin around the requested number for prices
+        orConditions.push({ price: { gte: num * 0.8, lte: num * 1.2 } });
+        // Also allow matching the number exactly in text fields
+        orConditions.push({ title: { contains: num.toString(), mode: "insensitive" } });
+        orConditions.push({ description: { contains: num.toString(), mode: "insensitive" } });
+      });
+    }
 
-    if (isNumeric) {
-      // If search is a number, treat it as exact price match
-      where.price = parseInt(trimmedSearch, 10);
+    if (orConditions.length > 0) {
+      where.OR = orConditions;
     } else {
-      // Otherwise search across multiple text fields
-      where.OR = [{ title: { contains: trimmedSearch, mode: "insensitive" } }, { description: { contains: trimmedSearch, mode: "insensitive" } }, { city: { contains: trimmedSearch, mode: "insensitive" } }, { category: { contains: trimmedSearch, mode: "insensitive" } }];
+      where.OR = [
+        { title: { contains: trimmedSearch, mode: "insensitive" } },
+        { description: { contains: trimmedSearch, mode: "insensitive" } },
+        { city: { contains: trimmedSearch, mode: "insensitive" } },
+        { category: { contains: trimmedSearch, mode: "insensitive" } }
+      ];
     }
   }
 
