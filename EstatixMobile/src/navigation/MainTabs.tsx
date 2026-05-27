@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import HomeScreen from "../screens/home/HomeScreen";
 import FavoritesScreen from "../screens/favorites/FavoritesScreen";
 import ChatListScreen from "../screens/chat/ChatListScreen";
+import ChatRoomScreen from "../screens/chat/ChatRoomScreen";
 import NotificationsScreen from "../screens/notifications/NotificationsScreen";
 import ProfileScreen from "../screens/profile/ProfileScreen";
 import CreatePropertyScreen from "../screens/home/CreatePropertyScreen";
@@ -16,6 +17,7 @@ import HomeStack from "./HomeStack";
 
 const Tab = createBottomTabNavigator();
 const ProfileStack = createStackNavigator();
+const ChatStack = createStackNavigator();
 
 function ProfileStackNavigator() {
   const { colors } = useTheme();
@@ -28,11 +30,27 @@ function ProfileStackNavigator() {
       }}
     >
       <ProfileStack.Screen name="ProfileMain" component={ProfileScreen} options={{ title: "Profile" }} />
-      <ProfileStack.Screen name="CreateProperty" component={CreatePropertyScreen} options={{ title: "Add Property" }} />
-      <ProfileStack.Screen name="EditProperty" component={EditPropertyScreen} options={{ title: "Edit Property" }} />
+      <ProfileStack.Screen name="ProfileCreateProperty" component={CreatePropertyScreen} options={{ title: "Add Property" }} />
+      <ProfileStack.Screen name="ProfileEditProperty" component={EditPropertyScreen} options={{ title: "Edit Property" }} />
       <ProfileStack.Screen name="VisitRequests" component={VisitRequestsScreen} options={{ title: "Visit Requests" }} />
       <ProfileStack.Screen name="PropertyMap" component={PropertyMapScreen} options={{ title: "Property Map" }} />
     </ProfileStack.Navigator>
+  );
+}
+
+function ChatStackNavigator() {
+  const { colors } = useTheme();
+  return (
+    <ChatStack.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: colors.background, elevation: 0 },
+        headerTitleStyle: { color: colors.text },
+        headerTintColor: colors.primary,
+      }}
+    >
+      <ChatStack.Screen name="ChatMain" component={ChatListScreen} options={{ title: "Chats" }} />
+      <ChatStack.Screen name="ChatRoomScreen" component={ChatRoomScreen} options={{ title: "Chat" }} />
+    </ChatStack.Navigator>
   );
 }
 
@@ -59,9 +77,8 @@ export default function MainTabs() {
       })}
     >
       <Tab.Screen name="Home" component={HomeStack} />
-      {/* <Tab.Screen name="Home" component={HomeScreen} /> */}
       <Tab.Screen name="Favorites" component={FavoritesScreen} />
-      <Tab.Screen name="Chat" component={ChatListScreen} />
+      <Tab.Screen name="Chat" component={ChatStackNavigator} options={{ headerShown: false }} />
       <Tab.Screen name="Notifications" component={NotificationsScreen} />
       <Tab.Screen name="Profile" component={ProfileStackNavigator} />
     </Tab.Navigator>

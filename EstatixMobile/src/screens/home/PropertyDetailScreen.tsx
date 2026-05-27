@@ -10,9 +10,10 @@ import {
   FlatList,
   StyleSheet,
   TextInput,
+  Alert,
 } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
-import { getProperty } from '../../api/property';
+import { getProperty, createReport } from '../../api/property';
 import AnimatedHeart from '../../components/AnimatedHeart';
 import { useFavoriteStore } from '../../store/favoriteStore';
 import { useTheme } from '../../hooks/useTheme';
@@ -207,18 +208,17 @@ export default function PropertyDetailScreen({ route, navigation }: any) {
                 <TouchableOpacity 
                   onPress={() => {
                     if (!reportReason) return;
-                    import('../../api/property').then(({ createReport }) => {
-                      createReport(property.id, property.ownerId, reportReason)
-                        .then(() => {
-                           import('react-native').then(({ Alert }) => Alert.alert('Success', 'Property reported.'));
-                           setReportModalVisible(false);
-                           setReportReason('');
-                        })
-                        .catch(() => {
-                           import('react-native').then(({ Alert }) => Alert.alert('Error', 'Failed to report.'));
-                           setReportModalVisible(false);
-                        });
-                    });
+                    createReport(property.id, property.ownerId, reportReason)
+                      .then(() => {
+                         Alert.alert('Success', 'Property reported.');
+                         setReportModalVisible(false);
+                         setReportReason('');
+                      })
+                      .catch((err) => {
+                         console.error('Error reporting property:', err);
+                         Alert.alert('Error', 'Failed to report.');
+                         setReportModalVisible(false);
+                      });
                   }} 
                   style={{ padding: 10, backgroundColor: colors.error, borderRadius: 8 }}
                 >

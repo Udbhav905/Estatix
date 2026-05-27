@@ -9,16 +9,31 @@ import { formatDate } from '../../utils/helpers';
 export default function VisitRequestsScreen() {
   const { colors } = useTheme();
   const queryClient = useQueryClient();
-  const { data: requests, isLoading, refetch } = useQuery({ queryKey: ['visitRequests'], queryFn: () => getMyVisitRequests().then(res => res.data) });
+
+  const { data: requests, isLoading, refetch } = useQuery({
+    queryKey: ['visitRequests'],
+    queryFn: () => getMyVisitRequests().then(res => res.data),
+  });
+
   const updateMutation = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: string }) => updateVisitStatus(id, status),
+    mutationFn: ({ id, status }: { id: string; status: string }) =>
+      updateVisitStatus(id, status),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['visitRequests'] }),
+    onError: () => Alert.alert('Error', 'Failed to update visit status. Please try again.'),
   });
 
   if (isLoading) return <LoadingSpinner />;
 
   const handleStatus = (id: string, status: string) => {
-    Alert.alert('Confirm', `Mark as ${status}?`, [{ text: 'Cancel' }, { text: 'OK', onPress: () => updateMutation.mutate({ id, status }) }]);
+    if (updateMutation.isPending) return;
+    Alert.alert(
+      'Confirm',
+      `Mark visit as ${status}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'OK', onPress: () => updateMutation.mutate({ id, status }) },
+      ]
+    );
   };
 
   return (
@@ -26,23 +41,63 @@ export default function VisitRequestsScreen() {
       <FlatList
         data={requests}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <View style={[styles.card, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
-            <Text style={[styles.property, { color: colors.text }]}>{item.property.title}</Text>
-            <Text style={[styles.requester, { color: colors.muted }]}>Requester: {item.requester.name}</Text>
-            <Text style={[styles.date, { color: colors.muted }]}>Date: {formatDate(item.date)}</Text>
-            <Text style={[styles.status, { color: item.status === 'PENDING' ? colors.error : colors.success }]}>Status: {item.status}</Text>
-            {item.status === 'PENDING' && (
-              <View style={styles.buttons}>
-                <TouchableOpacity style={[styles.approve, { backgroundColor: colors.success }]} onPress={() => handleStatus(item.id, 'APPROVED')}><Text style={styles.btnText}>Approve</Text></TouchableOpacity>
-                <TouchableOpacity style={[styles.reject, { backgroundColor: colors.error }]} onPress={() => handleStatus(item.id, 'REJECTED')}><Text style={styles.btnText}>Reject</Text></TouchableOpacity>
-              </View>
-            )}
-          </View>
-        )}
+        renderItem={({ item }) => {
+          // Guard: if property or requester relation was deleted, skip rendering
+          if (!item?.property || !item?.requester) return null;
+
+          return (
+            <View style={[styles.card, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
+              <Text style={[styles.property, { color: colors.text }]}>
+                {item.property.title ?? 'Unknown Property'}
+              </Text>
+              <Text style={[styles.requester, { color: colors.muted }]}>
+                Requester: {item.requester.name ?? 'Unknown'}
+              </Text>
+              <Text style={[styles.date, { color: colors.muted }]}>
+                Date: {formatDate(item.date)}
+              </Text>
+              <Text
+                style={[
+                  styles.status,
+                  { color: item.status === 'PENDING' ? colors.error : colors.success },
+                ]}
+              >
+                Status: {item.status}
+              </Text>
+              {item.status === 'PENDING' && (
+                <View style={styles.buttons}>
+                  <TouchableOpacity
+                    style={[
+                      styles.approve,
+                      { backgroundColor: colors.success, opacity: updateMutation.isPending ? 0.6 : 1 },
+                    ]}
+                    onPress={() => handleStatus(item.id, 'APPROVED')}
+                    disabled={updateMutation.isPending}
+                  >
+                    <Text style={styles.btnText}>Approve</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.reject,
+                      { backgroundColor: colors.error, opacity: updateMutation.isPending ? 0.6 : 1 },
+                    ]}
+                    onPress={() => handleStatus(item.id, 'REJECTED')}
+                    disabled={updateMutation.isPending}
+                  >
+                    <Text style={styles.btnText}>Reject</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          );
+        }}
         refreshing={isLoading}
         onRefresh={refetch}
-        ListEmptyComponent={<Text style={{ textAlign: 'center', marginTop: 50, color: colors.muted }}>No visit requests</Text>}
+        ListEmptyComponent={
+          <Text style={{ textAlign: 'center', marginTop: 50, color: colors.muted }}>
+            No visit requests yet
+          </Text>
+        }
       />
     </View>
   );

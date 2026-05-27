@@ -21,7 +21,7 @@ export default function ChatListScreen({ navigation }: any) {
         renderItem={({ item }) => {
           const otherUser = item.senderId === user?.id ? item.receiver : item.sender;
           return (
-            <TouchableOpacity style={[styles.item, { borderBottomColor: colors.border }]} onPress={() => navigation.navigate('ChatRoom', { propertyId: item.propertyId, otherUserId: otherUser.id, otherUserName: otherUser.name })}>
+            <TouchableOpacity style={[styles.item, { borderBottomColor: colors.border }]} onPress={() => navigation.navigate('ChatRoomScreen', { propertyId: item.propertyId, otherUserId: otherUser.id, otherUserName: otherUser.name })}>
               <Image source={{ uri: otherUser.avatar || 'https://via.placeholder.com/50' }} style={styles.avatar} />
               <View style={styles.details}>
                 <Text style={[styles.name, { color: colors.text }]}>{otherUser.name}</Text>

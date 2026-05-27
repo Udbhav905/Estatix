@@ -93,35 +93,36 @@ export default function ChatRoomScreen({ route }: any) {
           flatListRef.current?.scrollToEnd({ animated: true })
         }
         renderItem={({ item, index }) => (
-          <Animated.View
-            entering={FadeInUp.delay(index * 50)}
+          // Outer plain View handles positioning — Reanimated only touches the inner wrapper
+          <View
             style={{
-              alignSelf:
-                item.senderId === user?.id ? 'flex-end' : 'flex-start',
+              alignSelf: item.senderId === user?.id ? 'flex-end' : 'flex-start',
               margin: 8,
               maxWidth: '80%',
             }}
           >
-            <View
-              style={{
-                backgroundColor:
-                  item.senderId === user?.id
-                    ? colors.primary
-                    : colors.cardBg,
-                padding: 12,
-                borderRadius: 20,
-              }}
-            >
-              <Text
+            <Animated.View entering={FadeInUp.delay(index * 50)}>
+              <View
                 style={{
-                  color:
-                    item.senderId === user?.id ? '#fff' : colors.text,
+                  backgroundColor:
+                    item.senderId === user?.id
+                      ? colors.primary
+                      : colors.cardBg,
+                  padding: 12,
+                  borderRadius: 20,
                 }}
               >
-                {item.content}
-              </Text>
-            </View>
-          </Animated.View>
+                <Text
+                  style={{
+                    color:
+                      item.senderId === user?.id ? '#fff' : colors.text,
+                  }}
+                >
+                  {item.content}
+                </Text>
+              </View>
+            </Animated.View>
+          </View>
         )}
       />
 

@@ -18,12 +18,26 @@ export const useFavoriteStore = create<FavoriteState>((set, get) => ({
     } catch (e) { console.log(e); }
   },
   toggleFavorite: async (propertyId) => {
-    await apiToggleFavorite(propertyId);
     const current = get().favorites;
-    if (current.includes(propertyId)) {
+    const isFav = current.includes(propertyId);
+    
+    // Optimistically update the UI
+    if (isFav) {
       set({ favorites: current.filter(id => id !== propertyId) });
     } else {
       set({ favorites: [...current, propertyId] });
+    }
+
+    try {
+      await apiToggleFavorite(propertyId);
+    } catch (e) {
+      console.log('Failed to toggle favorite on server:', e);
+      // Rollback on failure
+      if (isFav) {
+        set({ favorites: [...get().favorites, propertyId] });
+      } else {
+        set({ favorites: get().favorites.filter(id => id !== propertyId) });
+      }
     }
   },
   isFavorite: (propertyId) => get().favorites.includes(propertyId),

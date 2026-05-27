@@ -104,7 +104,7 @@ export const createProperty = async (req: AuthRequest, res: Response) => {
 };
 
 export const getProperties = async (req: Request, res: Response) => {
-  const { page = 1, limit = 10, search, minPrice, maxPrice, type, category } = req.query;
+  const { page = 1, limit = 10, search, minPrice, maxPrice, type, category, ownerId } = req.query;
   const skip = (Number(page) - 1) * Number(limit);
   const where: any = { status: 'APPROVED' };
   if (search) where.title = { contains: search as string, mode: 'insensitive' };
@@ -112,6 +112,10 @@ export const getProperties = async (req: Request, res: Response) => {
   if (maxPrice) where.price = { lte: Number(maxPrice) };
   if (type) where.type = type;
   if (category) where.category = category;
+  if (ownerId) {
+    where.ownerId = ownerId as string;
+    delete where.status;
+  }
 
   const [properties, total] = await Promise.all([
     prisma.property.findMany({ where, skip, take: Number(limit), include: { images: true, owner: { select: { name: true, avatar: true } } }, orderBy: { createdAt: 'desc' } }),

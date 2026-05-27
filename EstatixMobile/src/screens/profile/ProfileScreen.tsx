@@ -64,8 +64,8 @@ export default function ProfileScreen({ navigation }: any) {
         <MenuItem icon="heart-outline" title="My Favorites" onPress={() => navigation.navigate('Favorites')} />
         <MenuItem icon="chatbubble-outline" title="My Chats" onPress={() => navigation.navigate('Chat')} />
         <MenuItem icon="calendar-outline" title="Visit Requests" onPress={() => navigation.navigate('VisitRequests')} />
-        <MenuItem icon="add-circle-outline" title="Add Property" onPress={() => navigation.navigate('CreateProperty')} />
-        <MenuItem icon="map-outline" title="My Properties on Map" onPress={() => navigation.navigate('PropertyMap', { propertyId: undefined })} />
+        <MenuItem icon="add-circle-outline" title="Add Property" onPress={() => navigation.navigate('ProfileCreateProperty')} />
+        <MenuItem icon="map-outline" title="My Properties on Map" onPress={() => navigation.navigate('PropertyMap', { propertyId: undefined, ownerId: user?.id })} />
         <MenuItem icon="log-out-outline" title="Logout" onPress={handleLogout} color="#EF4444" />
       </View>
     </ScrollView>
