@@ -1,21 +1,17 @@
-import { prisma } from '../utils/prisma';
-import cloudinary from '../config/cloudinary';
-import { Prisma, PropertyStatus, PropertyType } from '@prisma/client';
+import { prisma } from "../utils/prisma";
+import cloudinary from "../config/cloudinary";
+import { Prisma, PropertyStatus, PropertyType } from "@prisma/client";
 
 type UploadedFile = Express.Multer.File;
 
-export const createPropertyWithImages = async (
-  propertyData: any,
-  imageFiles: UploadedFile[],
-  ownerId: string
-) => {
+export const createPropertyWithImages = async (propertyData: any, imageFiles: UploadedFile[], ownerId: string) => {
   const property = await prisma.property.create({
     data: { ...propertyData, ownerId },
   });
 
   if (imageFiles?.length) {
     const uploads = imageFiles.map(async (file) => {
-      const result = await cloudinary.uploader.upload(file.path, { folder: 'properties' });
+      const result = await cloudinary.uploader.upload(file.path, { folder: "properties" });
       return prisma.propertyImage.create({
         data: { url: result.secure_url, publicId: result.public_id, propertyId: property.id },
       });
@@ -25,21 +21,29 @@ export const createPropertyWithImages = async (
   return property;
 };
 
-export const getFilteredProperties = async (filters: {
-  search?: string;
-  minPrice?: number;
-  maxPrice?: number;
-  type?: PropertyType;
-  category?: string;
-  page: number;
-  limit: number;
-}) => {
+export const getFilteredProperties = async (filters: { search?: string; minPrice?: number; maxPrice?: number; type?: PropertyType; category?: string; page: number; limit: number }) => {
   const { search, minPrice, maxPrice, type, category, page, limit } = filters;
   const skip = (page - 1) * limit;
   const where: any = { status: PropertyStatus.APPROVED };
-  if (search) where.title = { contains: search, mode: 'insensitive' };
-  if (minPrice) where.price = { gte: minPrice };
-  if (maxPrice) where.price = { lte: maxPrice };
+
+  // Enhanced search: try to parse as number for price, else search text fields
+  if (search && search.trim() !== "") {
+    const trimmedSearch = search.trim();
+    const isNumeric = /^\d+$/.test(trimmedSearch);
+
+    if (isNumeric) {
+      // If search is a number, treat it as exact price match
+      where.price = parseInt(trimmedSearch, 10);
+    } else {
+      // Otherwise search across multiple text fields
+      where.OR = [{ title: { contains: trimmedSearch, mode: "insensitive" } }, { description: { contains: trimmedSearch, mode: "insensitive" } }, { city: { contains: trimmedSearch, mode: "insensitive" } }, { category: { contains: trimmedSearch, mode: "insensitive" } }];
+    }
+  }
+
+  // Apply price range filters (overwrites exact price if both present)
+  if (minPrice !== undefined) where.price = { ...(where.price as any), gte: minPrice };
+  if (maxPrice !== undefined) where.price = { ...(where.price as any), lte: maxPrice };
+
   if (type) where.type = type;
   if (category) where.category = category;
 
@@ -49,21 +53,20 @@ export const getFilteredProperties = async (filters: {
       skip,
       take: limit,
       include: { images: true, owner: { select: { name: true, avatar: true } } },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     }),
     prisma.property.count({ where }),
   ]);
   return { properties, total, page, totalPages: Math.ceil(total / limit) };
 };
-
 export const incrementViews = async (propertyId: string) => {
   await prisma.property.update({ where: { id: propertyId }, data: { views: { increment: 1 } } });
 };
 
 export const deletePropertyAndImages = async (propertyId: string, userId: string, isAdmin: boolean) => {
   const property = await prisma.property.findUnique({ where: { id: propertyId } });
-  if (!property) throw new Error('Property not found');
-  if (property.ownerId !== userId && !isAdmin) throw new Error('Unauthorized');
+  if (!property) throw new Error("Property not found");
+  if (property.ownerId !== userId && !isAdmin) throw new Error("Unauthorized");
   const images = await prisma.propertyImage.findMany({ where: { propertyId } });
   for (const img of images) await cloudinary.uploader.destroy(img.publicId);
   await prisma.property.delete({ where: { id: propertyId } });

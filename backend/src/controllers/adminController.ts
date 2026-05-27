@@ -34,7 +34,27 @@ export const banUser = async (req: AuthRequest, res: Response) => {
   });
   res.json({ message: 'User banned' });
 };
+// POST /api/reports
+export const createReport = async (req: AuthRequest, res: Response) => {
+  const { propertyId, reportedUserId, reason } = req.body;
+  const reporterId = req?.user?.id;
 
+  if (!reason) return res.status(400).json({ error: 'Reason is required' });
+  if (!propertyId && !reportedUserId) {
+    return res.status(400).json({ error: 'Either propertyId or reportedUserId is required' });
+  }
+
+  const report = await prisma.report.create({
+    data: {
+      reporterId,
+      propertyId: propertyId || null,
+      reportedUserId: reportedUserId || null,
+      reason,
+      status: 'PENDING',
+    },
+  });
+  res.status(201).json(report);
+};
 export const getReports = async (req: AuthRequest, res: Response) => {
   const reports = await prisma.report.findMany({
     include: { reporter: true, property: true, reportedUser: true },
