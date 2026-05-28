@@ -101,7 +101,11 @@ export default function SearchBar({
           placeholder="Search properties"
           placeholderTextColor={colors.muted}
           value={query}
-          onChangeText={setQuery}
+          onChangeText={(text) => {
+            setQuery(text);
+            console.log('SearchBar query:', text);
+            onSearch(text);
+          }}
           onFocus={handleFocus}
           onBlur={onBlur}
           onSubmitEditing={() => onSearch(query)}
@@ -150,7 +154,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 12,
     marginTop: 14,
+    zIndex: 10,
+    elevation: 5,
   },
+
 
   container: {
     marginTop:7,

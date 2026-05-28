@@ -132,13 +132,36 @@ export const getPropertyById = async (req: Request, res: Response) => {
 };
 
 export const updateProperty = async (req: AuthRequest, res: Response) => {
-  const property = await prisma.property.findUnique({ where: { id: req.params.id as string } });
-  if (!property) return res.status(404).json({ error: 'Property not found' });
-  if (property.ownerId !== req.user!.id && req.user!.role !== 'ADMIN') return res.status(403).json({ error: 'Unauthorized' });
-  const updated = await prisma.property.update({ where: { id: req.params.id as string }, data: req.body });
-  res.json(updated);
-};
+  try {
+    const property = await prisma.property.findUnique({ where: { id: (req.params.id )as string } });
+    if (!property) return res.status(404).json({ error: 'Property not found' });
+    if (property.ownerId !== req.user!.id && req.user!.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
 
+    // Allowed fields that can be updated (scalar fields only)
+    const allowedFields = [
+      'title', 'description', 'price', 'type', 'category', 'bedrooms',
+      'bathrooms', 'area', 'address', 'city', 'state', 'country',
+      'latitude', 'longitude', 'status'
+    ];
+    const updateData: any = {};
+    for (const field of allowedFields) {
+      if (req.body[field] !== undefined) {
+        updateData[field] = req.body[field];
+      }
+    }
+
+    const updated = await prisma.property.update({
+      where: { id: (req.params.id )as string },
+      data: updateData,
+    });
+    res.json(updated);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to update property' });
+  }
+};
 export const deleteProperty = async (req: AuthRequest, res: Response) => {
   const property = await prisma.property.findUnique({ where: { id: req.params.id as string } });
   if (!property) return res.status(404).json({ error: 'Property not found' });

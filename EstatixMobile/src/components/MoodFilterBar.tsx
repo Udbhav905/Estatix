@@ -24,32 +24,34 @@ export default function MoodFilterBar() {
   };
 
   return (
-    <Animated.View entering={FadeInUp.delay(200).springify()} layout={Layout.springify()}>
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false} 
-        contentContainerStyle={styles.container}
-      >
-        {moods.map((mood) => {
-          const isActive = activeMood === mood.id;
-          return (
-            <TouchableOpacity
-              key={mood.id ?? 'all'}
-              style={[
-                styles.moodButton,
-                isActive && { backgroundColor: colors.primary },
-                !isActive && { backgroundColor: colors.cardBg, borderWidth: 1, borderColor: colors.border },
-              ]}
-              onPress={() => handlePress(mood.id)}
-            >
-              <Text style={styles.moodIcon}>{mood.icon}</Text>
-              <Text style={[styles.moodLabel, { color: isActive ? '#fff' : colors.text }]}>
-                {mood.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+    <Animated.View entering={FadeInUp.delay(200).springify()}>
+      <Animated.View layout={Layout.springify()}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false} 
+          contentContainerStyle={styles.container}
+        >
+          {moods.map((mood) => {
+            const isActive = activeMood === mood.id;
+            return (
+              <TouchableOpacity
+                key={mood.id ?? 'all'}
+                style={[
+                  styles.moodButton,
+                  isActive && { backgroundColor: colors.primary },
+                  !isActive && { backgroundColor: colors.cardBg, borderWidth: 1, borderColor: colors.border },
+                ]}
+                onPress={() => handlePress(mood.id)}
+              >
+                <Text style={styles.moodIcon}>{mood.icon}</Text>
+                <Text style={[styles.moodLabel, { color: isActive ? '#fff' : colors.text }]}>
+                  {mood.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </Animated.View>
     </Animated.View>
   );
 }

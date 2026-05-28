@@ -11,7 +11,7 @@ export default {
     ios: { supportsTablet: true, bundleIdentifier: "com.estatix.app" },
     android: { 
       adaptiveIcon: { foregroundImage: "./assets/logo.png", backgroundColor: "#F7F5F3" }, 
-      package: "com.estatix.app" 
+      package: "com.estatix.app"
     },
     web: { favicon: "./assets/logo.png" },
     plugins: [

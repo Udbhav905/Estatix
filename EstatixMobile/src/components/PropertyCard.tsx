@@ -19,34 +19,33 @@ export default function PropertyCard({ property, onPress, index }: any) {
   }));
 
   const handlePressIn = () => { scale.value = withTiming(0.96, { duration: 100 }); };
-  const handlePressOut = () => {
-    scale.value = withTiming(1, { duration: 100 });
-    onPress();
-  };
+  const handlePressOut = () => { scale.value = withTiming(1, { duration: 100 }); };
 
   return (
-    <Animated.View entering={FadeInDown.delay(index * 80).springify().damping(12)} style={animatedCardStyle}>
-      <TouchableOpacity activeOpacity={0.9} onPressIn={handlePressIn} onPressOut={handlePressOut} style={[styles.card, { backgroundColor: isDark ? colors.cardBg : colors.cardBg, borderColor: colors.border }]}>
-        <Image source={{ uri: property.images[0]?.url || 'https://via.placeholder.com/400' }} style={styles.image} />
-        <BlurView intensity={20} tint={isDark ? 'dark' : 'light'} style={styles.priceBadge}>
-          <Text style={[styles.price, { color: colors.primary }]}>${property.price.toLocaleString()}</Text>
-          {property.type === 'RENT' && <Text style={styles.rentText}>/month</Text>}
-        </BlurView>
-        <View style={styles.details}>
-          <View style={styles.row}>
-            <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>{property.title}</Text>
-            <AnimatedHeart isLiked={isFavorite(property.id)} onPress={() => toggleFavorite(property.id)} />
-          </View>
-          <View style={styles.row}>
-            <Ionicons name="location-outline" size={14} color={colors.muted} />
-            <Text style={[styles.location, { color: colors.muted }]}>{property.city}, {property.country}</Text>
-            <View style={styles.rating}>
-              <Ionicons name="star" size={12} color="#FFD700" />
-              <Text style={[styles.ratingText, { color: colors.muted }]}>4.8</Text>
+    <Animated.View entering={FadeInDown.delay(index * 80).springify().damping(12)}>
+      <Animated.View style={animatedCardStyle}>
+        <TouchableOpacity activeOpacity={0.9} onPress={onPress} onPressIn={handlePressIn} onPressOut={handlePressOut} style={[styles.card, { backgroundColor: isDark ? colors.cardBg : colors.cardBg, borderColor: colors.border }]}>
+          <Image source={{ uri: property.images[0]?.url || 'https://via.placeholder.com/400' }} style={styles.image} />
+          <BlurView intensity={20} tint={isDark ? 'dark' : 'light'} style={styles.priceBadge}>
+            <Text style={[styles.price, { color: colors.primary }]}>${property.price.toLocaleString()}</Text>
+            {property.type === 'RENT' && <Text style={styles.rentText}>/month</Text>}
+          </BlurView>
+          <View style={styles.details}>
+            <View style={styles.row}>
+              <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>{property.title}</Text>
+              <AnimatedHeart isLiked={isFavorite(property.id)} onPress={() => toggleFavorite(property.id)} />
+            </View>
+            <View style={styles.row}>
+              <Ionicons name="location-outline" size={14} color={colors.muted} />
+              <Text style={[styles.location, { color: colors.muted }]}>{property.city}, {property.country}</Text>
+              <View style={styles.rating}>
+                <Ionicons name="star" size={12} color="#FFD700" />
+                <Text style={[styles.ratingText, { color: colors.muted }]}>4.8</Text>
+              </View>
             </View>
           </View>
-        </View>
-      </TouchableOpacity>
+        </TouchableOpacity>
+      </Animated.View>
     </Animated.View>
   );
 }

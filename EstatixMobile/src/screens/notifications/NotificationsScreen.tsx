@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getNotifications, markNotificationRead, markAllRead } from '../../api/notification';
@@ -6,8 +6,20 @@ import { useTheme } from '../../hooks/useTheme';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { Ionicons } from '@expo/vector-icons';
 import { formatDate } from '../../utils/helpers';
+import api from '../../api/client';
 
 export default function NotificationsScreen() {
+  // useEffect(() => {
+  //   const sendTestNotification = async () => {
+  //     await api.post('/notifications/test', {
+  //       title: 'Hello',
+  //       body: 'This is a test notification',
+  //     });
+  //   };
+
+  //   sendTestNotification();
+  // }, []);
+
   const { colors } = useTheme();
   const queryClient = useQueryClient();
   const { data: notifications, isLoading, refetch } = useQuery({ queryKey: ['notifications'], queryFn: () => getNotifications().then(res => res.data) });

@@ -176,7 +176,6 @@ const TouchAwareCard = ({
   return (
     <View {...panResponder.panHandlers}>
       <PropertyCard property={property} index={index} onPress={() => {}} />
-      {/* Note: The original onPress is ignored; we handle press via the wrapper */}
     </View>
   );
 };

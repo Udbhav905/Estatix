@@ -19,6 +19,7 @@ export const getFavorites = async (req: AuthRequest, res: Response) => {
       orderBy: { createdAt: 'desc' },
     });
     res.json(favorites);
+    console.log(favorites);
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Failed to fetch favorites' });
   }

@@ -2,19 +2,26 @@ import React, { useState, useRef } from "react";
 import {
   View, Text, TextInput, ScrollView, TouchableOpacity, Alert, StyleSheet,
 } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
+import { useCallback } from 'react';
 import { Picker } from "@react-native-picker/picker";
 import { createProperty } from "../../api/property";
 import { useTheme } from "../../hooks/useTheme";
 import { useHaptic } from "../../hooks/useHaptic";
 import ImagePickerComponent from "../../components/ImagePicker";
 import { useAuthStore } from "../../store/authStore";
+import { useLocationStore } from "../../store/locationStore";
+import Ionicons from "@expo/vector-icons/build/Ionicons";
 
 export default function CreatePropertyScreen({ navigation }: any) {
   const { colors } = useTheme();
   const { impact } = useHaptic();
+  const { pickedLocation, setPickedLocation } = useLocationStore();
+  const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+
   const user = useAuthStore((s) => s.user);
   const [loading, setLoading] = useState(false);
-  const submittingRef = useRef(false); // extra guard
+  const submittingRef = useRef(false);
 
   const [form, setForm] = useState({
     title: "",
@@ -34,13 +41,31 @@ export default function CreatePropertyScreen({ navigation }: any) {
   });
   const [images, setImages] = useState<string[]>([]);
 
+  // ✅ When screen regains focus, read picked location from store
+  useFocusEffect(
+    useCallback(() => {
+      if (pickedLocation) {
+        setLocation(pickedLocation);
+        setForm((f) => ({
+          ...f,
+          latitude: String(pickedLocation.latitude),
+          longitude: String(pickedLocation.longitude),
+        }));
+        setPickedLocation(null); // clear after reading
+      }
+    }, [pickedLocation])
+  );
+
+  // ✅ Navigate to LocationPicker — no callback in params
+  const openMapPicker = () => {
+    navigation.navigate('LocationPicker');
+  };
+
   const handleSubmit = async () => {
     if (!form.title || !form.price || !form.address) {
       Alert.alert("Error", "Please fill all required fields");
       return;
     }
-
-    // Prevent concurrent submissions (button disabled + ref guard)
     if (loading || submittingRef.current) return;
     submittingRef.current = true;
     setLoading(true);
@@ -54,30 +79,28 @@ export default function CreatePropertyScreen({ navigation }: any) {
       });
 
       images.forEach((uri, idx) => {
-        // Extract file name and type from URI (assuming file:// or content://)
         const filename = uri.split('/').pop() || `photo_${idx}.jpg`;
         const match = /\.(\w+)$/.exec(filename);
         const type = match ? `image/${match[1]}` : 'image/jpeg';
         formData.append("images", { uri, type, name: filename } as any);
       });
 
-      // Increase timeout on this specific call if your API client allows it
-      const response = await createProperty(formData);
-      // If we reach here, success
+      await createProperty(formData);
       Alert.alert("Success", "Property created and pending approval.");
       navigation.goBack();
     } catch (error: any) {
       console.error("Create property error:", error);
-      // Log detailed error for debugging
-      let errorMsg = "Failed to create property. Please try again.";
+      let errorMsg = "Something went wrong. Please check your property list before retrying.";
       if (error.message?.includes("timeout")) {
-        errorMsg = "Upload took too long. Your property might have been created anyway. Please check your listings before retrying.";
+        errorMsg = "Upload took too long, but your property may have been created. Please check your listings.";
       } else if (error.response) {
-        errorMsg = `Server error: ${error.response.status} - ${JSON.stringify(error.response.data)}`;
+        const status = error.response.status;
+        if (status === 400) errorMsg = "Invalid data. Please check your inputs.";
+        else if (status === 401) errorMsg = "Session expired. Please log in again.";
+        else if (status === 413) errorMsg = "Images are too large. Please use smaller images.";
+        else errorMsg = `Server error (${status}). Please try again.`;
       }
-      Alert.alert("Error", errorMsg);
-      // Do NOT clear submittingRef here – user must manually retry,
-      // but they can try again after seeing the alert.
+      Alert.alert("Upload Issue", errorMsg);
     } finally {
       setLoading(false);
       submittingRef.current = false;
@@ -172,6 +195,24 @@ export default function CreatePropertyScreen({ navigation }: any) {
         value={form.country}
         onChangeText={(v) => setForm({ ...form, country: v })}
       />
+
+      {/* ✅ Map picker button — replaces lat/lng text inputs */}
+      <Text style={[styles.label, { color: colors.text }]}>Location</Text>
+      <TouchableOpacity
+        style={[styles.locationPicker, { borderColor: colors.border, backgroundColor: colors.cardBg }]}
+        onPress={openMapPicker}
+      >
+        <Ionicons name="map-outline" size={20} color={colors.primary} />
+        <Text style={{ color: location ? colors.text : colors.muted, marginLeft: 8, flex: 1 }}>
+          {location
+            ? `📍 ${location.latitude.toFixed(5)}, ${location.longitude.toFixed(5)}`
+            : 'Tap to pick location on map'}
+        </Text>
+        {location && (
+          <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+        )}
+      </TouchableOpacity>
+
       <Text style={[styles.label, { color: colors.text }]}>Images</Text>
       <ImagePickerComponent images={images} setImages={setImages} />
       <TouchableOpacity
@@ -190,4 +231,8 @@ const styles = StyleSheet.create({
   input: { borderWidth: 0.5, borderRadius: 12, padding: 12, fontSize: 16 },
   button: { padding: 16, borderRadius: 12, alignItems: "center" },
   buttonText: { color: "#fff", fontWeight: "bold" },
+  locationPicker: {
+    flexDirection: 'row', alignItems: 'center',
+    borderWidth: 1, borderRadius: 8, padding: 14, marginBottom: 12,
+  },
 });

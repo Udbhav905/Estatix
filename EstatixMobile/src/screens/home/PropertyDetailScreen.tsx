@@ -17,20 +17,51 @@ import { getProperty, createReport } from '../../api/property';
 import AnimatedHeart from '../../components/AnimatedHeart';
 import { useFavoriteStore } from '../../store/favoriteStore';
 import { useTheme } from '../../hooks/useTheme';
+import { useAuth } from '../../hooks/useAuth';
 import { Ionicons } from '@expo/vector-icons';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import ErrorView from '../../components/ErrorView';
+import { deleteProperty } from '../../api/property';
+import { useQueryClient } from '@tanstack/react-query';
 
 const { width, height } = Dimensions.get('window');
 
 export default function PropertyDetailScreen({ route, navigation }: any) {
   const { id } = route.params;
   const { colors } = useTheme();
+  const { user } = useAuth();
   const { isFavorite, toggleFavorite } = useFavoriteStore();
+  const queryClient = useQueryClient();
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isReportModalVisible, setReportModalVisible] = useState(false);
   const [reportReason, setReportReason] = useState('');
 
+  
+  const handleDeleteProperty = () => {
+    Alert.alert(
+      'Delete Property',
+      'Are you sure you want to delete this property? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteProperty(id);
+              queryClient.invalidateQueries({ queryKey: ['properties'] });
+              Alert.alert('Deleted', 'Property has been deleted.');
+              navigation.goBack();
+            } catch (err) {
+              console.error('Delete error:', err);
+              Alert.alert('Error', 'Failed to delete property.');
+            }
+          },
+        },
+      ]
+    );
+  };
+  
   const {
     data: property,
     isLoading,
@@ -40,7 +71,8 @@ export default function PropertyDetailScreen({ route, navigation }: any) {
     queryKey: ['property', id],
     queryFn: () => getProperty(id).then((res) => res.data),
   });
-
+  const isOwner = user?.id && property?.ownerId && user.id === property?.ownerId;
+  
   if (isLoading) return <LoadingSpinner />;
   if (error) return <ErrorView message="Failed to load property" onRetry={refetch} />;
 
@@ -148,28 +180,57 @@ export default function PropertyDetailScreen({ route, navigation }: any) {
             </View>
           </View>
 
-          {/* Action Buttons */}
-          <TouchableOpacity
-            style={[styles.requestButton, { backgroundColor: colors.primary }]}
-            onPress={() => navigation.navigate('Booking', { propertyId: id })}
-          >
-            <Text style={styles.requestButtonText}>Request Visit</Text>
-            <Ionicons name="calendar-outline" size={20} color="#fff" />
-          </TouchableOpacity>
+          {/* Owner Actions - Edit & Delete */}
+          {isOwner && (
+            <View style={styles.ownerActionsContainer}>
+              <Text style={[styles.ownerBadge, { color: colors.primary }]}>
+                <Ionicons name="shield-checkmark-outline" size={14} color={colors.primary} /> You own this property
+              </Text>
+              <View style={styles.ownerActions}>
+                <TouchableOpacity
+                  style={[styles.ownerButton, { backgroundColor: colors.primary }]}
+                  onPress={() => navigation.navigate('EditProperty', { id })}
+                >
+                  <Ionicons name="create-outline" size={18} color="#fff" />
+                  <Text style={styles.ownerButtonText}>Edit Details</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.ownerButton, { backgroundColor: '#EF4444' }]}
+                  onPress={handleDeleteProperty}
+                >
+                  <Ionicons name="trash-outline" size={18} color="#fff" />
+                  <Text style={styles.ownerButtonText}>Delete</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
 
-          <TouchableOpacity
-            style={[styles.contactButton, { borderColor: colors.primary }]}
-            onPress={() =>
-              navigation.navigate('ChatRoom', {
-                propertyId: id,
-                otherUserId: property.ownerId,
-                otherUserName: property.owner?.name || 'Owner',
-              })
-            }
-          >
-            <Ionicons name="chatbubble-outline" size={20} color={colors.primary} />
-            <Text style={[styles.contactButtonText, { color: colors.primary }]}>Contact Owner</Text>
-          </TouchableOpacity>
+          {/* Action Buttons */}
+          {!isOwner && (
+            <>
+              <TouchableOpacity
+                style={[styles.requestButton, { backgroundColor: colors.primary }]}
+                onPress={() => navigation.navigate('Booking', { propertyId: id })}
+              >
+                <Text style={styles.requestButtonText}>Request Visit</Text>
+                <Ionicons name="calendar-outline" size={20} color="#fff" />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.contactButton, { borderColor: colors.primary }]}
+                onPress={() =>
+                  navigation.navigate('ChatRoom', {
+                    propertyId: id,
+                    otherUserId: property.ownerId,
+                    otherUserName: property.owner?.name || 'Owner',
+                  })
+                }
+              >
+                <Ionicons name="chatbubble-outline" size={20} color={colors.primary} />
+                <Text style={[styles.contactButtonText, { color: colors.primary }]}>Contact Owner</Text>
+              </TouchableOpacity>
+            </>
+          )}
 
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20 }}>
             <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
@@ -177,13 +238,15 @@ export default function PropertyDetailScreen({ route, navigation }: any) {
               <Text style={[styles.shareButtonText, { color: colors.muted }]}>Share</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={styles.shareButton} 
-              onPress={() => setReportModalVisible(true)}
-            >
-              <Ionicons name="warning-outline" size={20} color={colors.error} />
-              <Text style={[styles.shareButtonText, { color: colors.error }]}>Report</Text>
-            </TouchableOpacity>
+            {!isOwner && (
+              <TouchableOpacity 
+                style={styles.shareButton} 
+                onPress={() => setReportModalVisible(true)}
+              >
+                <Ionicons name="warning-outline" size={20} color={colors.error} />
+                <Text style={[styles.shareButtonText, { color: colors.error }]}>Report</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </ScrollView>
@@ -354,6 +417,36 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   shareButtonText: {
+    fontSize: 14,
+  },
+  ownerActionsContainer: {
+    marginBottom: 16,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 0.5,
+    borderColor: 'rgba(0,0,0,0.1)',
+  },
+  ownerBadge: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  ownerActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  ownerButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  ownerButtonText: {
+    color: '#fff',
+    fontWeight: '600',
     fontSize: 14,
   },
 });

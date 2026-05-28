@@ -9,6 +9,6 @@ export type RootStackParamList = {
   ChatRoom: { propertyId: string; otherUserId: string; otherUserName: string };
   Booking: { propertyId: string };
   VisitRequests: undefined;
-  PropertyMap: { propertyId?: string };
+  PropertyMap: { propertyId?: string; ownerId?: string };
   LocationPicker: { onSelect: (lat: number, lng: number) => void };
 };

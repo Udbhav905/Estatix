@@ -5,9 +5,13 @@ import { notifyUser } from '../services/pushNotificationService';
 
 export const createVisitRequest = async (req: AuthRequest, res: Response) => {
   const { propertyId, date, notes } = req.body;
-  const property = await prisma.property.findUnique({ where: { id: propertyId } });
+  const property = await prisma.property.findUnique({ where: { id: propertyId }, include: { owner: true } });
   if (!property) return res.status(404).json({ error: 'Property not found' });
   if (property.ownerId === req.user!.id) return res.status(400).json({ error: 'Cannot request visit on your own property' });
+
+  // Fetch requester's full name
+  const requester = await prisma.user.findUnique({ where: { id: req.user!.id } });
+  const requesterName = requester?.name || 'Someone';
 
   const visit = await prisma.visit.create({
     data: {
@@ -19,7 +23,15 @@ export const createVisitRequest = async (req: AuthRequest, res: Response) => {
       status: 'PENDING',
     },
   });
-  await notifyUser(property.ownerId, 'New Visit Request', `${req.user!.id} wants to visit your property on ${date}`, { type: 'visit', visitId: visit.id });
+
+  // ✅ Correct – uses requester's name
+  await notifyUser(
+    property.ownerId,
+    'New Visit Request',
+    `${requesterName} wants to visit your property on ${new Date(date).toLocaleDateString()}`,
+    { type: 'visit', visitId: visit.id }
+  );
+
   res.status(201).json(visit);
 };
 
@@ -43,11 +55,26 @@ export const getMyVisitBookings = async (req: AuthRequest, res: Response) => {
 
 export const updateVisitStatus = async (req: AuthRequest, res: Response) => {
   const { status } = req.body;
-  const visit = await prisma.visit.findUnique({ where: { id: req.params.id  as string} });
+  const visit = await prisma.visit.findUnique({
+    where: { id: String(req.params.id) },
+    include: { property: true, requester: true }
+  });
   if (!visit) return res.status(404).json({ error: 'Visit not found' });
   if (visit.ownerId !== req.user!.id) return res.status(403).json({ error: 'Unauthorized' });
 
-  const updated = await prisma.visit.update({ where: { id: req.params.id as string }, data: { status } });
-  await notifyUser(visit.requesterId, 'Visit Request Updated', `Your visit request is ${status}`, { type: 'visit', visitId: visit.id });
+  const updated = await prisma.visit.update({ where: { id: String(req.params.id) }, data: { status } });
+
+  // Fetch owner's name
+  const owner = await prisma.user.findUnique({ where: { id: req.user!.id } });
+  const ownerName = owner?.name || 'The owner';
+
+  // ✅ Notify requester with owner's name
+  await notifyUser(
+    visit.requesterId,
+    'Visit Request Updated',
+    `${ownerName} has ${status.toLowerCase()} your visit request for ${visit.property.title}`,
+    { type: 'visit', visitId: visit.id }
+  );
+
   res.json(updated);
 };
